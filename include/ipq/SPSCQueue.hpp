@@ -18,6 +18,7 @@ template <typename Item, size_t Capacity>
 class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
 {
   using Base = IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>;
+  static constexpr std::size_t Mask = Capacity - 1;
 
   public:
 
@@ -27,7 +28,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     void push_impl(ForwardItem&& item) noexcept
     {
       auto local_write_idx = data.write_idx.load(std::memory_order_relaxed);
-      auto next_write_idx = (local_write_idx + 1) & (Capacity - 1);
+      auto next_write_idx = (local_write_idx + 1) & Mask;
 
       data.buffer[local_write_idx] = std::forward<ForwardItem>(item);
       data.write_idx.store(next_write_idx, std::memory_order_release);
@@ -38,7 +39,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     {
       auto local_write_idx = data.write_idx.load(std::memory_order_relaxed);
       auto local_read_idx = data.read_idx.load(std::memory_order_acquire);
-      auto next_write_idx = (local_write_idx + 1) & (Capacity - 1);
+      auto next_write_idx = (local_write_idx + 1) & Mask;
 
       if (next_write_idx == local_read_idx) [[unlikely]]
         return false;
@@ -52,7 +53,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     Item pop_impl(void) noexcept
     {
       auto local_read_idx = data.read_idx.load(std::memory_order_relaxed);
-      auto next_read_idx = (local_read_idx + 1) & (Capacity - 1);
+      auto next_read_idx = (local_read_idx + 1) & Mask;
 
       Item item = std::move(data.buffer[local_read_idx]);
       data.read_idx.store(next_read_idx, std::memory_order_release);
@@ -72,7 +73,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     {
       auto local_write_idx = data.write_idx.load(std::memory_order_relaxed);
       auto local_read_idx = data.read_idx.load(std::memory_order_acquire);
-      auto next_write_idx = (local_write_idx + 1) & (Capacity - 1);
+      auto next_write_idx = (local_write_idx + 1) & Mask;
 
       return next_write_idx == local_read_idx;
     }
@@ -82,7 +83,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
       auto local_write_idx = data.write_idx.load(std::memory_order_relaxed);
       auto local_read_idx = data.read_idx.load(std::memory_order_acquire);
 
-      return (local_write_idx - local_read_idx) & (Capacity - 1);
+      return (local_write_idx - local_read_idx) & Mask;
     }
 
     void clear_impl(void) noexcept

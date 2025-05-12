@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-12 18:01:10                                                
+last edited: 2025-05-12 21:18:06                                                
 
 ================================================================================*/
 
@@ -20,30 +20,32 @@ namespace ipcqueue
 template <typename Derived, typename Item, std::size_t Capacity>
 class IQueueCRTP
 {
+  static_assert(Capacity % 2 == 0, "Capacity must be a power of 2");
+
   public:
 
-    explicit IQueueCRTP(std::string_view name) : state{0, 0, {}}
+    explicit IQueueCRTP(std::string_view name) : data{0, 0, {}}
     {
       fd = shm_open(name.data(), O_CREAT | O_RDWR | O_SYNC, 0666);
-      ftruncate(fd, sizeof(SharedState));
-      void *addr = mmap(nullptr, sizeof(SharedState), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
+      ftruncate(fd, sizeof(SharedData));
+      void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
 
       if (addr == MAP_FAILED)
         utils::throwError("Failed to create shared memory region");
 
-      state = static_cast<SharedState*>(addr);
+      data = static_cast<SharedData*>(addr);
     }
 
     ~IQueueCRTP(void) noexcept
     {
-      munmap(state, sizeof(SharedState));
+      munmap(data, sizeof(SharedData));
       shm_unlink(name.data());
       close(fd);
     }
 
     template <typename ForwardItem>
     void push(ForwardItem&& item) {
-      derived().push_impl(std::forward<ForwardItem>(item));
+      derived().force_push_impl(std::forward<ForwardItem>(item));
     }
 
     template <typename ForwardItem>
@@ -55,8 +57,8 @@ class IQueueCRTP
       return derived().pop_impl();
     }
 
-    Item peek(void) const {
-      return derived().peek_impl();
+    const Item& front(void) const {
+      return derived().front_impl();
     }
 
     bool isEmpty(void) const {
@@ -71,22 +73,18 @@ class IQueueCRTP
       return derived().size_impl();
     }
 
-    std::size_t capacity(void) const {
-      return derived().capacity_impl();
-    }
-
     void clear(void) {
       derived().clear_impl();
     }
 
   protected:
 
-    struct SharedState
+    struct SharedData
     {
-      alignas(CACHELINE_SIZE) std::size_t head;
-      alignas(CACHELINE_SIZE) std::size_t tail;
+      alignas(CACHELINE_SIZE) std::atomic<std::size_t> write_idx;
+      alignas(CACHELINE_SIZE) std::atomic<std::size_t> read_idx;
       std::array<Item, Capacity> buffer;
-    } state;
+    } data;
 
   private:
 

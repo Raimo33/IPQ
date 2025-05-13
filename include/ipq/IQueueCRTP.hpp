@@ -5,16 +5,19 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-12 21:18:06                                                
+last edited: 2025-05-13 13:42:11                                                
 
 ================================================================================*/
 
 #pragma once
 
 #include <cstddef>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #include "QueueUtils.hpp"
 
-namespace ipcqueue
+namespace ipq
 {
 
 template <typename Derived, typename Item, std::size_t Capacity>
@@ -24,7 +27,7 @@ class IQueueCRTP
 
   public:
 
-    explicit IQueueCRTP(std::string_view name) : data{0, 0, {}}
+    explicit IQueueCRTP(std::string_view name) : name(name), data{0, 0, {}}
     {
       fd = shm_open(name.data(), O_CREAT | O_RDWR | O_SYNC, 0666);
       ftruncate(fd, sizeof(SharedData));
@@ -45,7 +48,7 @@ class IQueueCRTP
 
     template <typename ForwardItem>
     void push(ForwardItem&& item) {
-      derived().force_push_impl(std::forward<ForwardItem>(item));
+      derived().push_impl(std::forward<ForwardItem>(item));
     }
 
     template <typename ForwardItem>
@@ -89,6 +92,7 @@ class IQueueCRTP
   private:
 
     int fd;
+    std::string name;
 
     Derived& derived(void) noexcept {
       return static_cast<Derived&>(*this);

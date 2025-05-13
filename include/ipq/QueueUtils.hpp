@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-13 13:22:19                                                
+last edited: 2025-05-13 13:42:11                                                
 
 ================================================================================*/
 
@@ -18,10 +18,10 @@ last edited: 2025-05-13 13:22:19
 #include <exception>
 
 #ifndef CACHELINE_SIZE
-# define CACHELINE_SIZE std::hardware_destructive_interference_size
+# define CACHELINE_SIZE 64
 #endif
 
-namespace ipcqueue
+namespace ipq
 {
   
 namespace utils

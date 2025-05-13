@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-13 13:42:11                                                
+last edited: 2025-05-13 13:46:33                                                
 
 ================================================================================*/
 
@@ -27,7 +27,7 @@ class IQueueCRTP
 
   public:
 
-    explicit IQueueCRTP(std::string_view name) : name(name), data{0, 0, {}}
+    explicit IQueueCRTP(std::string_view name) : name(name)
     {
       fd = shm_open(name.data(), O_CREAT | O_RDWR | O_SYNC, 0666);
       ftruncate(fd, sizeof(SharedData));
@@ -87,7 +87,9 @@ class IQueueCRTP
       alignas(CACHELINE_SIZE) std::atomic<std::size_t> write_idx;
       alignas(CACHELINE_SIZE) std::atomic<std::size_t> read_idx;
       std::array<Item, Capacity> buffer;
-    } data;
+    };
+
+    SharedData* data;
 
   private:
 

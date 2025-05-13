@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-12 21:18:06                                                
+last edited: 2025-05-13 13:22:19                                                
 
 ================================================================================*/
 
@@ -18,6 +18,7 @@ template <typename Item, size_t Capacity>
 class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
 {
   using Base = IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>;
+  using Base::data;
 
   public:
 

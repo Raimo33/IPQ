@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-13 13:46:33                                                
+last edited: 2025-05-13 14:27:00                                                
 
 ================================================================================*/
 
@@ -14,6 +14,7 @@ last edited: 2025-05-13 13:46:33
 #include <cstddef>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <atomic>
 
 #include "QueueUtils.hpp"
 

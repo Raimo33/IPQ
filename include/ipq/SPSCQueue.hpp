@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-14 20:28:36                                                
+last edited: 2025-05-15 17:14:45                                                
 
 ================================================================================*/
 
@@ -30,55 +30,42 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     template <typename ForwardItem>
     inline void push_impl(ForwardItem&& item) noexcept
     {
-      const auto local_write_idx = data->write_idx.fetch_add(1, /**/);
+      const auto local_write_idx = data->write_idx.load(std::memory_order_relaxed);
       data->buffer[local_write_idx & mask] = std::forward<ForwardItem>(item);
+      data->write_idx.store(local_write_idx + 1, std::memory_order_release);
     }
 
     template <typename ForwardItem>
     bool try_push_impl(ForwardItem&& item) noexcept
     {
-      const auto local_write_idx = data->write_idx.load(/**/);
-      const auto local_read_idx = data->read_idx.load(/**/);
+      const auto local_write_idx = data->write_idx.load(std::memory_order_relaxed);
+      const auto local_read_idx = data->read_idx.load(std::memory_order_acquire);
 
       if ((local_write_idx - local_read_idx) == Capacity)
         return false;
 
       data->buffer[local_write_idx & mask] = std::forward<ForwardItem>(item);
-      data->write_idx.store(local_write_idx + 1, /**/);
+      data->write_idx.store(local_write_idx + 1, std::memory_order_release);
       return true;
     }
 
-    inline Item pop_impl(void) noexcept
+    inline bool try_pop_impl(Item& out) noexcept
     {
-      auto local_read_idx = data->read_idx.fetch_add(1, /**/);
-      return data->buffer[local_read_idx & mask];
-    }
+      const auto local_read_idx = data->read_idx.load(std::memory_order_relaxed);
+      const auto local_write_idx = data->write_idx.load(std::memory_order_acquire);
 
-    inline const Item& front_impl(void) const noexcept
-    {
-      auto local_read_idx = data->read_idx.load(/**/);
-      return data->buffer[local_read_idx & mask];
-    }
+      if (local_read_idx == local_write_idx) [[unlikely]]
+          return false;
 
-    inline bool isEmpty_impl(void) const noexcept
-    {
-      return data->read_idx.load(/**/) == data->write_idx.load(/**/);
-    }
-
-    bool isFull_impl(void) const noexcept
-    {
-      return (data->write_idx.load(/**/) - data->read_idx.load(/**/) == Capacity);
-    }
-
-    std::size_t size_impl(void) const noexcept
-    {
-      return data->write_idx.load(/**/) - data->read_idx.load(/**/);
+      out = data->buffer[local_read_idx & mask];
+      data->read_idx.store(local_read_idx + 1, std::memory_order_release);
+      return true;
     }
 
     void clear_impl(void) noexcept
     {
-      data->write_idx.store(0, /**/);
-      data->read_idx.store(0, /**/);
+      data->write_idx.store(0, std::memory_order_relaxed);
+      data->read_idx.store(0, std::memory_order_relaxed);
     }
 };
 

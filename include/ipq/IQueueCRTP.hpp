@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-13 14:27:00                                                
+last edited: 2025-05-15 17:14:45                                                
 
 ================================================================================*/
 
@@ -28,11 +28,51 @@ class IQueueCRTP
 
   public:
 
+    class Producer
+    {
+      public:
+        explicit Producer(Derived* d) : derived(d) {}
+
+        template <typename ForwardItem>
+        inline void push(ForwardItem&& item) noexcept {
+          derived->push_impl(std::forward<ForwardItem>(item));
+        }
+
+        template <typename ForwardItem>
+        inline bool try_push(ForwardItem&& item) noexcept {
+          return derived->try_push_impl(std::forward<ForwardItem>(item));
+        }
+
+        inline void clear(void) noexcept {
+          derived->clear_impl();
+        }
+
+      private:
+        Derived* derived;
+    };
+
+    class Consumer
+    {
+      public:
+        explicit Consumer(Derived* d) : derived(d) {}
+
+        inline bool try_pop(Item& out) noexcept {
+          return derived->try_pop_impl(out);
+        }
+
+      private:
+        Derived* derived;
+    };
+
+    Producer producer() { return Producer(static_cast<Derived*>(this)); }
+    Consumer consumer() { return Consumer(static_cast<Derived*>(this)); }
+
     explicit IQueueCRTP(std::string_view name) : name(name)
     {
-      fd = shm_open(name.data(), O_CREAT | O_RDWR | O_SYNC, 0666);
+      const int fd = shm_open(name.data(), O_CREAT | O_RDWR, 0666);
       ftruncate(fd, sizeof(SharedData));
       void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
+      close(fd);
 
       if (addr == MAP_FAILED)
         utils::throwError("Failed to create shared memory region");
@@ -44,41 +84,6 @@ class IQueueCRTP
     {
       munmap(data, sizeof(SharedData));
       shm_unlink(name.data());
-      close(fd);
-    }
-
-    template <typename ForwardItem>
-    void push(ForwardItem&& item) {
-      derived().push_impl(std::forward<ForwardItem>(item));
-    }
-
-    template <typename ForwardItem>
-    bool try_push(ForwardItem&& item) {
-      return derived().try_push_impl(std::forward<ForwardItem>(item));
-    }
-
-    Item pop(void) {
-      return derived().pop_impl();
-    }
-
-    const Item& front(void) const {
-      return derived().front_impl();
-    }
-
-    bool isEmpty(void) const {
-      return derived().isEmpty_impl();
-    }
-
-    bool isFull(void) const {
-      return derived().isFull_impl();
-    }
-
-    std::size_t size(void) const {
-      return derived().size_impl();
-    }
-
-    void clear(void) {
-      derived().clear_impl();
     }
 
   protected:
@@ -90,20 +95,11 @@ class IQueueCRTP
       std::array<Item, Capacity> buffer;
     };
 
-    SharedData* data;
+    SharedData *data;
 
   private:
 
-    int fd;
     std::string name;
-
-    Derived& derived(void) noexcept {
-      return static_cast<Derived&>(*this);
-    }
-
-    const Derived& derived(void) const noexcept {
-      return static_cast<const Derived&>(*this);
-    }
 };
 
 }

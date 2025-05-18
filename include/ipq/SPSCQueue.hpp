@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-15 17:14:45                                                
+last edited: 2025-05-18 18:35:39                                                
 
 ================================================================================*/
 
@@ -24,7 +24,6 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
   static constexpr std::size_t mask = Capacity - 1;
 
   public:
-
     explicit SPSCQueue(std::string_view name) : Base(name) {}
 
     template <typename ForwardItem>
@@ -41,7 +40,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
       const auto local_write_idx = data->write_idx.load(std::memory_order_relaxed);
       const auto local_read_idx = data->read_idx.load(std::memory_order_acquire);
 
-      if ((local_write_idx - local_read_idx) == Capacity)
+      if ((local_write_idx - local_read_idx) == Capacity) [[unlikely]]
         return false;
 
       data->buffer[local_write_idx & mask] = std::forward<ForwardItem>(item);
@@ -55,9 +54,9 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
       const auto local_write_idx = data->write_idx.load(std::memory_order_acquire);
 
       if (local_read_idx == local_write_idx) [[unlikely]]
-          return false;
+        return false;
 
-      out = data->buffer[local_read_idx & mask];
+      out = std::move(data->buffer[local_read_idx & mask]);
       data->read_idx.store(local_read_idx + 1, std::memory_order_release);
       return true;
     }

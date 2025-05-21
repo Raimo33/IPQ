@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-15 17:14:45                                                
+last edited: 2025-05-21 12:22:02                                                
 
 ================================================================================*/
 
@@ -15,6 +15,7 @@ last edited: 2025-05-15 17:14:45
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <atomic>
+#include <array>
 
 #include "QueueUtils.hpp"
 
@@ -83,6 +84,10 @@ class IQueueCRTP
     ~IQueueCRTP(void) noexcept
     {
       munmap(data, sizeof(SharedData));
+    }
+
+    inline void destroy(void) noexcept
+    {
       shm_unlink(name.data());
     }
 

@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-18 18:35:39                                                
+last edited: 2025-05-21 12:22:02                                                
 
 ================================================================================*/
 
@@ -69,6 +69,11 @@ class SPMCQueue : public IQueueCRTP<SPMCQueue<Item, Capacity>, Item, Capacity>
       std::unreachable();
     }
 
+    inline void clear_impl(void) noexcept
+    {
+      data->write_idx.store(0, std::memory_order_relaxed);
+      data->read_idx.store(0, std::memory_order_relaxed);
+    }
 };
 
 }

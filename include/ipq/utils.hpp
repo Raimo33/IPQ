@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-13 13:42:11                                                
+last edited: 2025-05-23 18:02:03                                                
 
 ================================================================================*/
 
@@ -26,13 +26,13 @@ namespace ipq
   
 namespace utils
 {
-  [[noreturn]] [[gnu::noinline]] void throwError(std::string_view message)
+  [[noreturn]] [[gnu::noinline]] void throw_error(std::string_view message)
   {
     #ifdef __EXCEPTIONS
       throw std::runtime_error(message.data());
     #else
       std::cerr << message << std::endl;
-      std::abort();
+      std::terminate();
     #endif
   }
 }

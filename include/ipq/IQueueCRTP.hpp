@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-21 12:22:02                                                
+last edited: 2025-05-23 18:02:03                                                
 
 ================================================================================*/
 
@@ -17,56 +17,16 @@ last edited: 2025-05-21 12:22:02
 #include <atomic>
 #include <array>
 
-#include "QueueUtils.hpp"
+#include "utils.hpp"
 
 namespace ipq
 {
 
-template <typename Derived, typename Item, std::size_t Capacity>
+template <typename Derived, typename Item, size_t Capacity>
+  requires (Capacity > 0) && ((Capacity & (Capacity - 1)) == 0)
 class IQueueCRTP
 {
-  static_assert(Capacity % 2 == 0, "Capacity must be a power of 2");
-
   public:
-
-    class Producer
-    {
-      public:
-        explicit Producer(Derived* d) : derived(d) {}
-
-        template <typename ForwardItem>
-        inline void push(ForwardItem&& item) noexcept {
-          derived->push_impl(std::forward<ForwardItem>(item));
-        }
-
-        template <typename ForwardItem>
-        inline bool try_push(ForwardItem&& item) noexcept {
-          return derived->try_push_impl(std::forward<ForwardItem>(item));
-        }
-
-        inline void clear(void) noexcept {
-          derived->clear_impl();
-        }
-
-      private:
-        Derived* derived;
-    };
-
-    class Consumer
-    {
-      public:
-        explicit Consumer(Derived* d) : derived(d) {}
-
-        inline bool try_pop(Item& out) noexcept {
-          return derived->try_pop_impl(out);
-        }
-
-      private:
-        Derived* derived;
-    };
-
-    Producer producer() { return Producer(static_cast<Derived*>(this)); }
-    Consumer consumer() { return Consumer(static_cast<Derived*>(this)); }
 
     explicit IQueueCRTP(std::string_view name) : name(name)
     {
@@ -76,27 +36,39 @@ class IQueueCRTP
       close(fd);
 
       if (addr == MAP_FAILED)
-        utils::throwError("Failed to create shared memory region");
+        utils::throw_error("Failed to create shared memory region");
 
       data = static_cast<SharedData*>(addr);
     }
 
-    ~IQueueCRTP(void) noexcept
-    {
+    ~IQueueCRTP(void) noexcept {
       munmap(data, sizeof(SharedData));
     }
 
-    inline void destroy(void) noexcept
-    {
+    template <typename ForwardItem>
+    inline void push(ForwardItem &&item) noexcept {
+      derived->push_impl(std::forward<ForwardItem>(item));
+    }
+    
+    inline bool try_pop(Item &out) noexcept {
+      return derived->try_pop_impl(out);
+    }
+
+    inline void clear(void) noexcept {
+      derived->clear_impl();
+    }
+
+    inline void destroy(void) noexcept {
       shm_unlink(name.data());
     }
 
   protected:
+    static constexpr size_t wrap_mask = Capacity - 1;
 
     struct SharedData
     {
-      alignas(CACHELINE_SIZE) std::atomic<std::size_t> write_idx;
-      alignas(CACHELINE_SIZE) std::atomic<std::size_t> read_idx;
+      alignas(CACHELINE_SIZE) std::atomic<size_t> write_idx;
+      alignas(CACHELINE_SIZE) std::atomic<size_t> read_idx;
       std::array<Item, Capacity> buffer;
     };
 

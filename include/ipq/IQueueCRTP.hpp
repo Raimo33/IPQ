@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-23 18:02:03                                                
+last edited: 2025-05-25 18:47:18                                                
 
 ================================================================================*/
 
@@ -28,14 +28,11 @@ class IQueueCRTP
 {
   public:
 
-    explicit IQueueCRTP(std::string_view name) : name(name)
+    explicit IQueueCRTP(const int fd)
     {
-      const int fd = shm_open(name.data(), O_CREAT | O_RDWR, 0666);
-      ftruncate(fd, sizeof(SharedData));
       void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
-      close(fd);
 
-      if (addr == MAP_FAILED)
+      if (addr == MAP_FAILED) [[unlikely]]
         utils::throw_error("Failed to create shared memory region");
 
       data = static_cast<SharedData*>(addr);
@@ -47,23 +44,17 @@ class IQueueCRTP
 
     template <typename ForwardItem>
     inline void push(ForwardItem &&item) noexcept {
-      derived->push_impl(std::forward<ForwardItem>(item));
+      derived()->push_impl(std::forward<ForwardItem>(item));
     }
     
-    inline bool try_pop(Item &out) noexcept {
-      return derived->try_pop_impl(out);
-    }
-
-    inline void clear(void) noexcept {
-      derived->clear_impl();
-    }
-
-    inline void destroy(void) noexcept {
-      shm_unlink(name.data());
+    inline bool pop(Item &out) noexcept {
+      return derived()->pop_impl(out);
     }
 
   protected:
     static constexpr size_t wrap_mask = Capacity - 1;
+    static constexpr size_t flush_frequency = Capacity / 4;
+    static constexpr size_t flush_mask = flush_frequency - 1;
 
     struct SharedData
     {
@@ -75,8 +66,8 @@ class IQueueCRTP
     SharedData *data;
 
   private:
-
-    std::string name;
+    inline Derived *derived(void) noexcept { return static_cast<Derived*>(this); }
+    inline const Derived *derived(void) const noexcept { return static_cast<const Derived*>(this); }
 };
 
 }

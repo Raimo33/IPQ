@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-25 18:47:18                                                
+last edited: 2025-05-28 19:38:23                                                
 
 ================================================================================*/
 
@@ -60,7 +60,7 @@ class IQueueCRTP
     {
       alignas(CACHELINE_SIZE) std::atomic<size_t> write_idx;
       alignas(CACHELINE_SIZE) std::atomic<size_t> read_idx;
-      std::array<Item, Capacity> buffer;
+      alignas(CACHELINE_SIZE) std::array<Item, Capacity> buffer;
     };
 
     SharedData *data;

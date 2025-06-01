@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-05-28 19:38:23                                                
+last edited: 2025-06-01 11:36:42                                                
 
 ================================================================================*/
 
@@ -19,23 +19,31 @@ last edited: 2025-05-28 19:38:23
 
 #include "utils.hpp"
 
+template <size_t N>
+concept PowerOfTwo = (N > 0) && ((N & (N - 1)) == 0);
+
 namespace ipq
 {
 
 template <typename Derived, typename Item, size_t Capacity>
-  requires (Capacity > 0) && ((Capacity & (Capacity - 1)) == 0)
+  requires PowerOfTwo<Capacity>
 class IQueueCRTP
 {
   public:
 
     explicit IQueueCRTP(const int fd)
     {
-      void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
+      bool error = false;
 
-      if (addr == MAP_FAILED) [[unlikely]]
-        utils::throw_error("Failed to create shared memory region");
+      error |= ftruncate(fd, sizeof(SharedData)) == -1;
+      void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
+      error |= (addr == MAP_FAILED);
+      error |= mlock(addr, sizeof(SharedData)) == -1;
 
       data = static_cast<SharedData*>(addr);
+
+      if (error) [[unlikely]]
+        utils::throw_error("Failed to mmap shared memory");
     }
 
     ~IQueueCRTP(void) noexcept {

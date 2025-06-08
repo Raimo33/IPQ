@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-06-01 11:36:42                                                
+last edited: 2025-06-08 11:22:30                                                
 
 ================================================================================*/
 
@@ -25,7 +25,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
   using Base::flush_mask;
 
   public:
-    explicit SPSCQueue(const int fd) : Base(fd) {}
+    explicit SPSCQueue(std::string_view name) : Base(name) {}
 
     template <typename ForwardItem>
     void push_impl(ForwardItem &&item) noexcept

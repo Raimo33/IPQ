@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-06-01 11:36:42                                                
+last edited: 2025-06-08 11:22:30                                                
 
 ================================================================================*/
 
@@ -31,10 +31,12 @@ class IQueueCRTP
 {
   public:
 
-    explicit IQueueCRTP(const int fd)
+    explicit IQueueCRTP(std::string_view name) :
+      _name(name)
     {
       bool error = false;
 
+      const int fd = shm_open(_name.data(), O_RDWR | O_CREAT | O_SYNC, 0666);
       error |= ftruncate(fd, sizeof(SharedData)) == -1;
       void *addr = mmap(nullptr, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
       error |= (addr == MAP_FAILED);
@@ -48,6 +50,10 @@ class IQueueCRTP
 
     ~IQueueCRTP(void) noexcept {
       munmap(data, sizeof(SharedData));
+    }
+
+    inline void destroy(void) {
+      shm_unlink(_name.c_str());
     }
 
     template <typename ForwardItem>
@@ -76,6 +82,8 @@ class IQueueCRTP
   private:
     inline Derived *derived(void) noexcept { return static_cast<Derived*>(this); }
     inline const Derived *derived(void) const noexcept { return static_cast<const Derived*>(this); }
+
+    const std::string _name;
 };
 
 }

@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-06-08 11:25:45                                                
+last edited: 2025-06-08 12:27:57                                                
 
 ================================================================================*/
 
@@ -16,8 +16,11 @@ last edited: 2025-06-08 11:25:45
 #include <sys/mman.h>
 #include <atomic>
 #include <array>
+#include <exception>
 
-#include "utils.hpp"
+#ifndef CACHELINE_SIZE
+# define CACHELINE_SIZE 64
+#endif
 
 template <size_t N>
 concept PowerOfTwo = (N > 0) && ((N & (N - 1)) == 0);
@@ -43,7 +46,7 @@ class IQueueCRTP
       data = static_cast<SharedData*>(addr);
 
       if (error) [[unlikely]]
-        utils::throw_error("Failed to mmap shared memory");
+        throw std::runtime_error("Failed to initialize shared memory");
     }
 
     ~IQueueCRTP(void) noexcept {

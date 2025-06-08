@@ -52,7 +52,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
           return false;
       }
 
-      out = data->buffer[local_read_idx & wrap_mask];
+      out = std::move(data->buffer[local_read_idx & wrap_mask]);
       local_read_idx++;
       return true;
     }

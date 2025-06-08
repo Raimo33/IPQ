@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-06-08 12:27:57                                                
+last edited: 2025-06-08 12:32:53                                                
 
 ================================================================================*/
 
@@ -46,7 +46,7 @@ class IQueueCRTP
       data = static_cast<SharedData*>(addr);
 
       if (error) [[unlikely]]
-        throw std::runtime_error("Failed to initialize shared memory");
+        throw_error("Failed to initialize shared memory queue");
     }
 
     ~IQueueCRTP(void) noexcept {
@@ -79,6 +79,17 @@ class IQueueCRTP
   private:
     inline Derived *derived(void) noexcept { return static_cast<Derived*>(this); }
     inline const Derived *derived(void) const noexcept { return static_cast<const Derived*>(this); }
+
+    static void throw_error(std::string_view message)
+    {
+    #ifdef __cpp_exceptions
+      throw std::runtime_error(message);
+    #else
+      write(STDERR_FILENO, message.data(), message.size());
+      write(STDERR_FILENO, "\n", 1);
+      std::abort();
+    #endif
+    }
 };
 
 }

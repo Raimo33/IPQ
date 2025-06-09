@@ -35,12 +35,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     void push_impl(ForwardItem &&item) noexcept
     {
       data->buffer[_local_write_idx & wrap_mask] = std::forward<ForwardItem>(item);
-
-      //TODO FIX this slows the consumer
-      if ((_local_write_idx & flush_mask) == 0) [[unlikely]]
-        data->write_idx.store(_local_write_idx + 1, std::memory_order_release);
-
-      _local_write_idx++;
+      data->write_idx.store(++_local_write_idx, std::memory_order_release);
     }
 
     bool pop_impl(Item &out) noexcept

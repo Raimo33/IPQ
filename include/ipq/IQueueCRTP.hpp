@@ -64,8 +64,6 @@ class IQueueCRTP
 
   protected:
     static constexpr size_t wrap_mask = Capacity - 1;
-    static constexpr size_t flush_frequency = Capacity / 4;
-    static constexpr size_t flush_mask = flush_frequency - 1;
 
     struct SharedData
     {

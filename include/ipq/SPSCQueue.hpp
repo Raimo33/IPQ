@@ -5,7 +5,7 @@ Creator: Claudio Raimondi
 Email: claudio.raimondi@pm.me                                                   
 
 created at: 2025-05-12 18:01:10                                                 
-last edited: 2025-06-09 20:03:52                                                
+last edited: 2025-06-09 20:06:35                                                
 
 ================================================================================*/
 
@@ -58,9 +58,9 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
     }
 
   private:
-    thread_local size_t _local_read_idx;
-    thread_local size_t _local_write_idx;
-    thread_local size_t _cached_write_idx;
+    size_t _local_read_idx;
+    size_t _local_write_idx;
+    size_t _cached_write_idx;
 };
 
 }

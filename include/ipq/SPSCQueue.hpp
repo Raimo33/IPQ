@@ -22,7 +22,6 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
   using Base = IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>;
   using Base::data;
   using Base::wrap_mask;
-  using Base::flush_mask;
 
   public:
     explicit SPSCQueue(const int fd) :

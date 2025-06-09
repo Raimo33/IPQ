@@ -20,40 +20,43 @@ template <typename Item, size_t Capacity>
 class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
 {
   using Base = IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>;
-  using Base::data;
-  using Base::wrap_mask;
+  using Base::_data;
+  using Base::_wrap_mask;
 
   public:
-    explicit SPSCQueue(const int fd) :
-      Base(fd),
-      _local_read_idx(0),
-      _local_write_idx(0),
-      _cached_write_idx(0) {}
+    explicit SPSCQueue(const int fd) : Base(fd);
 
     void push_impl(const Item &item) noexcept
     {
-      data->buffer[_local_write_idx & wrap_mask] = item;
-      data->write_idx.store(++_local_write_idx, std::memory_order_release);
+      _data->buffer[_local_write_idx & _wrap_mask] = item;
+      _data->write_idx.store(++_local_write_idx, std::memory_order_release);
+    }
+
+    template<typename... Args>
+    void emplace_impl(Args &&...args) noexcept
+    {
+      new (&_data->buffer[_local_write_idx & _wrap_mask]) Item(std::forward<Args>(args)...);
+      _data->write_idx.store(++_local_write_idx, std::memory_order_release);
     }
 
     bool pop_impl(Item &out) noexcept
     {
       if (_local_read_idx == _cached_write_idx) [[unlikely]]
       {
-        _cached_write_idx = data->write_idx.load(std::memory_order_acquire);
+        _cached_write_idx = _data->write_idx.load(std::memory_order_acquire);
         if (_local_read_idx == _cached_write_idx) [[unlikely]]
           return false;
       }
 
-      out = data->buffer[_local_read_idx & wrap_mask];
+      out = _data->buffer[_local_read_idx & _wrap_mask];
       _local_read_idx++;
       return true;
     }
 
   private:
-    size_t _local_read_idx;
-    size_t _local_write_idx;
-    size_t _cached_write_idx;
+    size_t _local_read_idx{0};
+    size_t _local_write_idx{0};
+    size_t _cached_write_idx{0};
 };
 
 }

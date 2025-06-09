@@ -29,7 +29,7 @@ namespace ipq
 {
 
 template <typename Derived, typename Item, size_t Capacity>
-  requires is_power_of_two<Capacity> && std::is_trivially_copyable_v<Item>
+  requires is_power_of_two<Capacity> && std::is_trivially_constructible_v<Item> && std::is_trivially_destructible_v<Item> && std::is_trivially_copyable_v<Item>
 class IQueueCRTP
 {
   public:
@@ -43,7 +43,10 @@ class IQueueCRTP
       error |= (addr == MAP_FAILED);
       error |= mlock(addr, sizeof(SharedData)) == -1;
 
-      data = static_cast<SharedData*>(addr);
+      _data = static_cast<SharedData*>(addr);
+      _data->write_idx.store(0, std::memory_order_relaxed);
+      _data->read_idx.store(0, std::memory_order_relaxed);
+      _data->buffer.fill(Item{});
 
       if (error) [[unlikely]]
         throw_error("Failed to initialize shared memory queue");
@@ -56,13 +59,18 @@ class IQueueCRTP
     inline void push(const Item &item) noexcept {
       derived()->push_impl(item);
     }
+
+    template<typename... Args>
+    inline void emplace(Args &&...args) noexcept {
+      derived()->emplace_impl(std::forward<Args>(args)...);
+    }
     
     inline bool pop(Item &out) noexcept {
       return derived()->pop_impl(out);
     }
 
   protected:
-    static constexpr size_t wrap_mask = Capacity - 1;
+    static constexpr size_t _wrap_mask = Capacity - 1;
 
     struct SharedData
     {
@@ -71,7 +79,7 @@ class IQueueCRTP
       alignas(CACHELINE_SIZE) std::array<Item, Capacity> buffer;
     };
 
-    SharedData *data;
+    SharedData *_data;
 
   private:
     inline Derived *derived(void) noexcept { return static_cast<Derived*>(this); }

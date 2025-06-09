@@ -20,8 +20,8 @@ template <typename Item, size_t Capacity>
 class SPMCQueue : public IQueueCRTP<SPMCQueue<Item, Capacity>, Item, Capacity>
 {
   using Base = IQueueCRTP<SPMCQueue<Item, Capacity>, Item, Capacity>;
-  using Base::data;
-  using Base::wrap_mask;
+  using Base::_data;
+  using Base::_wrap_mask;
 
   public:
     explicit SPMCQueue(const int fd) :
@@ -31,26 +31,33 @@ class SPMCQueue : public IQueueCRTP<SPMCQueue<Item, Capacity>, Item, Capacity>
 
     void push_impl(const Item &item) noexcept
     {
-      data->buffer[_local_write_idx & wrap_mask] = item;
-      data->write_idx.store(++_local_write_idx, std::memory_order_release);
+      _data->buffer[_local_write_idx & _wrap_mask] = item;
+      _data->write_idx.store(++_local_write_idx, std::memory_order_release);
+    }
+
+    template<typename... Args>
+    void emplace_impl(Args &&...args) noexcept
+    {
+      new (&_data->buffer[_local_write_idx & _wrap_mask]) Item(std::forward<Args>(args)...);
+      _data->write_idx.store(++_local_write_idx, std::memory_order_release);
     }
 
     bool pop_impl(Item &out) noexcept
     {
-      size_t local_read_idx = data->read_idx.load(std::memory_order_relaxed);
+      size_t local_read_idx = _data->read_idx.load(std::memory_order_relaxed);
 
       while (true)
       {
         if (local_read_idx == _cached_write_idx) [[unlikely]]
         {
-          _cached_write_idx = data->write_idx.load(std::memory_order_acquire);
+          _cached_write_idx = _data->write_idx.load(std::memory_order_acquire);
           if (local_read_idx == _cached_write_idx) [[unlikely]]
             return false;
         }
 
-        if (data->read_idx.compare_exchange_weak(local_read_idx, local_read_idx + 1, std::memory_order_acquire, std::memory_order_relaxed)) [[likely]]
+        if (_data->read_idx.compare_exchange_weak(local_read_idx, local_read_idx + 1, std::memory_order_acquire, std::memory_order_relaxed)) [[likely]]
         {
-          out = data->buffer[local_read_idx & wrap_mask];
+          out = _data->buffer[local_read_idx & _wrap_mask];
           return true;
         }
 

@@ -31,10 +31,9 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
       _local_write_idx(0),
       _cached_write_idx(0) {}
 
-    template <typename ForwardItem>
-    void push_impl(ForwardItem &&item) noexcept
+    void push_impl(const Item &item) noexcept
     {
-      data->buffer[_local_write_idx & wrap_mask] = std::forward<ForwardItem>(item);
+      data->buffer[_local_write_idx & wrap_mask] = item;
       data->write_idx.store(++_local_write_idx, std::memory_order_release);
     }
 
@@ -47,7 +46,7 @@ class SPSCQueue : public IQueueCRTP<SPSCQueue<Item, Capacity>, Item, Capacity>
           return false;
       }
 
-      out = std::move(data->buffer[_local_read_idx & wrap_mask]);
+      out = data->buffer[_local_read_idx & wrap_mask];
       _local_read_idx++;
       return true;
     }

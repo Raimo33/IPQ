@@ -23,13 +23,13 @@ last edited: 2025-06-09 20:06:35
 #endif
 
 template <size_t N>
-concept PowerOfTwo = (N > 0) && ((N & (N - 1)) == 0);
+concept is_power_of_two = (N > 0) && ((N & (N - 1)) == 0);
 
 namespace ipq
 {
 
 template <typename Derived, typename Item, size_t Capacity>
-  requires PowerOfTwo<Capacity>
+  requires is_power_of_two<Capacity> && std::is_trivially_copyable_v<Item>
 class IQueueCRTP
 {
   public:
@@ -53,9 +53,8 @@ class IQueueCRTP
       munmap(data, sizeof(SharedData));
     }
 
-    template <typename ForwardItem>
-    inline void push(ForwardItem &&item) noexcept {
-      derived()->push_impl(std::forward<ForwardItem>(item));
+    inline void push(const Item &item) noexcept {
+      derived()->push_impl(item);
     }
     
     inline bool pop(Item &out) noexcept {
